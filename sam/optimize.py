@@ -82,6 +82,7 @@ def optimize_parameter(model, param_name, f, g, bounds=(1e-4, None), disp=0, max
         p.set(old_value)  # Restore old value
         return f_val, f_prime_val
 
+
     x0 = ravel(p.get())
     bounds = [bounds] * len(x0)
 
@@ -96,7 +97,7 @@ def optimize_parameter(model, param_name, f, g, bounds=(1e-4, None), disp=0, max
 
     # runs some function with new updated parameter
     new_f_val = f()
-
+    print("Optimizer return code: {}, {} iterations".format(rc,nfeval))
     log.info('Optimized %s; improvement: %g' % (param_name, new_f_val - old_f_val))
 
 

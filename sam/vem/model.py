@@ -1,3 +1,5 @@
+WRITEOUT= False
+
 import numpy as np
 from scipy.special import gammaln, psi, polygamma
 import sys
@@ -6,7 +8,11 @@ from sam.pickle_file_io import PickleFileIO
 from sam.math_util import *
 import sam.optimize as optimize
 import sam.log as log
+import pickle
+sys.path.append(r"D:\PyCharm Projects\py-sam-master\topic-eval\src\algorithms\sam")
+#from reader import Reader
 
+use_our_reader = False
 
 class VEMModel(PickleFileIO):
     def __init__(self, reader=None, T=None):
@@ -17,14 +23,23 @@ class VEMModel(PickleFileIO):
         # Set up a reader to access the corpus.  This gives the data dimensionality (D), the number of documents,
         # the number of data, the number of document classes, and the document labels (as well as whether a
         # document label was observed).
-        self.reader = reader
-        self.corpus_file = self.reader.filename
-        self.V = self.reader.dim  # Vocab size
-        self.D = self.reader.num_docs
-        self.num_docs = self.reader.num_docs
+        if use_our_reader:
+            self.reader = Reader()
+            self.reader.read_corpus(corpus)
+            self.V = len(self.vocabulary)
+            self.documents = self.reader.documents
+            self.D = self.documents.shape[1]
+            self.v = self.reader.documents
 
-        # For efficiency, read the corpus into memory
-        self.load_corpus_as_matrix()
+        else:
+            self.reader = reader
+            self.corpus_file = self.reader.filename
+            self.V = self.reader.dim  # Vocab size
+            self.D = self.reader.num_docs
+            self.num_docs = self.reader.num_docs
+
+            # For efficiency, read the corpus into memory
+            self.load_corpus_as_matrix()
 
         # Variational parameters
         self.alpha = np.ones(self.T) * 1.0 + 1.0
@@ -36,11 +51,21 @@ class VEMModel(PickleFileIO):
         self.vm = l2_normalize(np.random.rand(self.V))
         self.vmu = l2_normalize(np.random.rand(self.V, self.T))
 
+        # BAD INITIALIZATION
+        self.vmu = l2_normalize(np.ones([self.V, self.T]))
+        self.vm = l2_normalize(np.ones(self.V))
+        print(self.vmu)
         # Initialize vAlpha
         self.valpha = np.empty((self.T, self.num_docs))
         for d in range(self.num_docs):
             distances_from_topics = np.abs(cosine_similarity(self.v[:, d], self.vmu)) + 0.01
             self.valpha[:, d] = distances_from_topics / sum(distances_from_topics) * 3.0
+
+        # BACKUP CORPUS, VOCAB
+        if WRITEOUT:
+            with open(r"../topic-eval\data\corpus\original/SAM NEWS CORPUS.pickle", mode='wb') as output:
+                pickle.dump(self.v, output)
+
 
     def __setstate__(self, state):
         self.__dict__.update(state)
@@ -335,12 +360,22 @@ class VEMModel(PickleFileIO):
 
         self.iteration += 1
 
+    def write_parameters(self):
+        print("xi:{}".format(self.xi))
+        print("alpha:{}".format(self.alpha))
+
+
     def write_topics(self, f=None, num_top_words=10, num_bottom_words=10):
         if f is None:
             f = sys.stdout
 
         wordlist = open(self.corpus_file + '.wordlist').readlines()  # TODO: not hardcode this?
         wordlist = np.array([each.strip() for each in wordlist], str)
+
+        if WRITEOUT:
+            with open(r"../topic-eval\data\corpus\original/SAM NEWS CORPUS WORDLIST.pickle", mode='wb') as output:
+                pickle.dump(wordlist, output)
+
 
         for t in range(self.T):
             print >>f, 'Topic %d' % t

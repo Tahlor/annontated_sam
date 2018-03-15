@@ -15,9 +15,8 @@ model = VEMModel(reader)
 
 while True:
     model.run_one_iteration()
-    model.write_topics()
-
-
+    #model.write_topics()
+    model.write_parameters()
 
 def check_grads(model):
     assert np.isfinite(model.l_alpha())
